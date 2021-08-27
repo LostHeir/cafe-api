@@ -1,4 +1,4 @@
-import sqlalchemy.types
+import sqlalchemy.types, os
 from flask import Flask, jsonify, render_template, request
 from werkzeug import exceptions
 from flask_sqlalchemy import SQLAlchemy
@@ -82,12 +82,44 @@ def add_new_cafe():
                     setattr(new_cafe, column.name, input_data[column.name])
         except exceptions.BadRequestKeyError:  # If given column name is not in the data from POST method, skip it.
             pass
-    try:  # Try to add given Cafe, if Cafe with such name already exist don,t rise an error just tell the user.
+    try:  # Try to add given Cafe, if Cafe with such name already exist don't rise an error just tell the user.
         db.session.add(new_cafe)
         db.session.commit()
     except sqlalchemy.exc.IntegrityError:
         return jsonify(response=dict(failure="Something went wrong."))
     return jsonify(response=dict(success="Successfully added the new Cafe"))
+
+
+# HTTP PATCH
+@app.route("/update-price/<cafe_id>", methods=["PATCH"])
+def update_price(cafe_id):
+    new_price = request.args.get("new_price")
+    if int(cafe_id) <= db.session.query(Cafe).order_by(Cafe.id.desc()).first().id:
+        selected_cafe = Cafe.query.get(cafe_id)
+        selected_cafe.coffee_price = new_price
+        db.session.commit()
+        return jsonify(response=dict(success="Successfully changed price of the coffee."))
+    else:
+        # 404 - resource not found
+        return jsonify(response=dict(failure="Sorry, we don't have Cafe with such id.")), 404
+
+
+# HTTP DELETE
+@app.route("/report-closed/<cafe_id>", methods=["DELETE"])
+def report_closed_cafe(cafe_id):
+    if int(cafe_id) <= db.session.query(Cafe).order_by(Cafe.id.desc()).first().id:
+        api_key = request.args.get("api_key")
+        if api_key == os.environ["VALID"]:
+            selected_cafe = Cafe.query.get(cafe_id)
+            db.session.delete(selected_cafe)
+            db.session.commit()
+            return jsonify(response=dict(success="Successfully deleted closed Cafe."))
+        else:
+            # 403 - access forbiden
+            return jsonify(response=dict(failure="Sorry, you are not authorised to do this..")), 403
+    else:
+        # 404 - resource not found
+        return jsonify(response=dict(failure="Sorry, we don't have Cafe with such id.")), 404
 
 
 if __name__ == '__main__':
