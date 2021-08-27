@@ -1,4 +1,6 @@
+import sqlalchemy.types
 from flask import Flask, jsonify, render_template, request
+from werkzeug import exceptions
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.sql import func
 
@@ -37,7 +39,7 @@ def home():
     return render_template("index.html")
 
 
-# HTTP GET - Read Record
+# HTTP GET
 @app.route("/random")
 def get_random_cafe():
     random_cafe = Cafe.query.order_by(func.random()).first()  # get random cafe from DB
@@ -63,6 +65,29 @@ def search_for_cafe():
         return jsonify(cafes=cafes)
     else:
         return jsonify(error={"Not Found": "There is no cafe in given location."})
+
+
+# HTTP POST
+@app.route("/add", methods=["POST"])
+def add_new_cafe():
+    input_data = request.form  # Get data from post method.
+    new_cafe = Cafe()
+    for column in Cafe.__table__.columns:
+        try:
+            if input_data[column.name]:  # Check if given column name is in the data from POST method.
+                if type(getattr(Cafe, column.name).type) == sqlalchemy.sql.sqltypes.Boolean:  # Some of the columns
+                    # are boolean type, in such case type conversion is needed.
+                    setattr(new_cafe, column.name, bool(input_data[column.name]))
+                else:
+                    setattr(new_cafe, column.name, input_data[column.name])
+        except exceptions.BadRequestKeyError:  # If given column name is not in the data from POST method, skip it.
+            pass
+    try:  # Try to add given Cafe, if Cafe with such name already exist don,t rise an error just tell the user.
+        db.session.add(new_cafe)
+        db.session.commit()
+    except sqlalchemy.exc.IntegrityError:
+        return jsonify(response=dict(failure="Something went wrong."))
+    return jsonify(response=dict(success="Successfully added the new Cafe"))
 
 
 if __name__ == '__main__':
