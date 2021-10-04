@@ -17,10 +17,14 @@ Documentation for the API is <a href="https://documenter.getpostman.com/view/172
 Main goal of the project was to create my own RESTful API.
 
 ## Demo
+![Code sample](./Screenshots/data_1.png)
 
+![Code sample](./Screenshots/data_2.png)
 
 ## Technologies
 * Python 3.8
+* Flask 2.0.1
+* SQLAlchemy 1.4.22
 
 ## Setup
 Install missing libraries if necessary.
